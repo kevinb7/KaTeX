@@ -7,7 +7,7 @@
 # suitable containers themselves, calling the screenshotter.js script
 # directly.
 
-for browserTag in firefox:2.46.0; do
+for browserTag in firefox:2.46.0 chrome:2.46.0; do
     browser=${browserTag%:*}
     image=selenium/standalone-${browserTag}
     echo "Starting container for ${image}"

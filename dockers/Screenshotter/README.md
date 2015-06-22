@@ -2,28 +2,23 @@
 ----------------------------------------
 
 Now you too can generate screenshots from your own computer, and (hopefully)
-have them look mostly the same as the current ones! To start, make a docker
-image from the included Dockerfile using a command like
+have them look mostly the same as the current ones! Make sure you have docker
+installed and running. Also make sure that the development server is running,
+or start it by running
 
-    docker build --tag=ss .
+    node server.js
 
-from within this directory (note you need to have docker installed and running
-for this to work). This will build a docker image with the `ss` tag, which you
-can then use to run dockers based on it.
+in the top level directory of the source tree. If all you want is (re)create
+all the snapshots for all the browsers, then you can do so by running the
+`screenshotter.sh` script:
 
-This Dockerfile is set up such that it will run everything and generate all the
-screenshots when the docker is run, so no interactive input is required. All
-that you need to do is mount the KaTeX directory you want to test into the
-`/KaTeX` directory in the docker, and run the `ss` docker, like so:
+    dockers/Screenshotter/screenshotter.sh
 
-    docker run --volume=/your/KaTeX/:/KaTeX ss
+It will fetch all required selenium docker images, and use them to
+take screenshots. If you are creating screenshots on a regular basis,
+you can keep the docker containers with the selenium setups running.
+To do so, have a look at `screenshotter.sh` and reproduce its commands
+manually.
 
-The `--volume=/your/KaTeX:/KaTeX` switch mounts your KaTeX directory into the
-docker. Note this is a read-write mounting, so the new screenshots will be
-directly placed into your KaTeX directory.
-
-Since this docker is very self-contained, there should be no need to do
-interactive management of the docker, but if you feel the need, you can read the
-General Docker Help section of the MathJaxFonts docker readme.
-
-That's it!
+Known bugs: The “Lap” example is known to produce slightly
+nondeterministic results on firefox, for unknown reasons.

@@ -24,10 +24,17 @@ case 4:
     browser = process.argv[2];
     container = process.argv[3];
     break;
+case 3:
+    todo = process.argv[4].split(",");
+    // fall through
+case 2:
+    browser = "firefox";
+    container = null;
+    break;
 default:
     console.error("Usage: " + process.argv[0] + " " +
                   path.basename(process.argv[1]) +
-                  " BROWSER CONTAINER [CASES]\n");
+                  " [BROWSER CONTAINER] [CASES]\n");
     console.error("BROWSER is firefox, chrome or any other browser " +
                   "supported by the selenium server.");
     console.error("CONTAINER is the name or id of a container " +
@@ -53,26 +60,30 @@ function dockerCmd() {
         "docker", args, { encoding: "utf-8" }).replace(/\n$/, "");
 }
 
-var gateway;
-var myIP;
-try {
-    gateway = child_process.execFileSync(
-        "boot2docker", ["ip"], { encoding: "utf-8" }).replace(/\n$/, "");
-    var config = child_process.execFileSync(
-        "boot2docker", ["config"], { encoding: "utf-8" });
-    config = (/^HostIP = "(.*)"$/m).exec(config);
-    if (!config) {
-        console.error("Failed to find HostIP");
-        process.exit(2);
+var myIP, gateway, port;
+if (container === null) {
+    myIP = "localhost";
+    gateway = port = null;
+} else {
+    try {
+        gateway = child_process.execFileSync(
+            "boot2docker", ["ip"], { encoding: "utf-8" }).replace(/\n$/, "");
+        var config = child_process.execFileSync(
+            "boot2docker", ["config"], { encoding: "utf-8" });
+        config = (/^HostIP = "(.*)"$/m).exec(config);
+        if (!config) {
+            console.error("Failed to find HostIP");
+            process.exit(2);
+        }
+        myIP = config[1];
+    } catch(e) {
+        myIP = gateway = dockerCmd(
+            "inspect", "-f", "{{.NetworkSettings.Gateway}}", container);
     }
-    myIP = config[1];
-} catch(e) {
-    myIP = gateway = dockerCmd(
-        "inspect", "-f", "{{.NetworkSettings.Gateway}}", container);
+    port = dockerCmd("port", container, "4444");
+    port = port.replace(/^0\.0\.0\.0:/, gateway + ":");
+    console.log("Selenium server at " + port);
 }
-var port = dockerCmd("port", container, "4444");
-port = port.replace(/^0\.0\.0\.0:/, gateway + ":");
-console.log("Selenium server at " + port);
 var toStrip = "http://localhost:7936/";
 var baseURL = "http://" + myIP + ":7936/";
 
@@ -80,7 +91,7 @@ var baseURL = "http://" + myIP + ":7936/";
 // Wait for container to become ready
 
 var attempts = 0;
-process.nextTick(tryConnect);
+process.nextTick(gateway ? tryConnect : buildDriver);
 function tryConnect() {
     var sock = net.connect({ host: gateway, port: +port.replace(/.*:/, "") });
     sock.on("connect", function() {
@@ -100,10 +111,9 @@ function tryConnect() {
 
 var driver;
 function buildDriver() {
-    driver = new selenium.Builder()
-        .forBrowser(browser)
-        .usingServer("http://" + port + "/wd/hub")
-        .build();
+    var builder = new selenium.Builder().forBrowser(browser);
+    if (port) builder.usingServer("http://" + port + "/wd/hub")
+    driver = builder.build();
     setSize(width, height);
 }
 

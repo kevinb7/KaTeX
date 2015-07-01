@@ -176,6 +176,11 @@ function takeScreenshot(key) {
         if (width !== 1024 || height !== 768) {
             throw new Error("Excpected 1024x768, got " + width + "x" + height);
         }
+        if (key === "Lap" && browser === "firefox" && buf[0x32] === 0xf8) {
+            // There is some strange non-determinism with this case,
+            // causing slight vertical shifts. We accept both outcomes.
+            key += "_alt";
+        }
         var file = path.join(dstDir, key + "-" + browser + ".png");
         fs.writeFile(file, buf, check);
         console.log(key);

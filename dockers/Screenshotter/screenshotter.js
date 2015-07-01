@@ -16,16 +16,27 @@ var browser, container;
 //////////////////////////////////////////////////////////////////////
 // Process command line arguments
 
+function adjustListOfCases(arg) {
+    if (arg.substr(0, 1) === "-") {
+        var exclude = arg.substr(1).split(",");
+        todo = todo.filter(function(key) {
+            return exclude.indexOf(key) === -1;
+        });
+    } else {
+        todo = arg.split(",");
+    }
+}
+
 switch (process.argv.length) {
 case 5:
-    todo = process.argv[4].split(",");
+    adjustListOfCases(process.argv[4]);
     // fall through
 case 4:
     browser = process.argv[2];
     container = process.argv[3];
     break;
 case 3:
-    todo = process.argv[4].split(",");
+    adjustListOfCases(process.argv[2]);
     // fall through
 case 2:
     browser = "firefox";
@@ -152,6 +163,10 @@ function takeScreenshots() {
 
 function takeScreenshot(key) {
     var url = data[key];
+    if (!url) {
+        console.error("Test case " + key + " not known!");
+        return;
+    }
     url = baseURL + url.substr(toStrip.length);
     driver.get(url);
     driver.takeScreenshot().then(function haveScreenshot(img) {

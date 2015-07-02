@@ -100,12 +100,20 @@ Code
  - 80 character line length
  - commas last
  - declare variables in the outermost scope that they are used
+ - camelCase for variables in JavaScript
+ - snake_case for variables in Python
 
 In general, try to make your code blend in with the surrounding code.
 
 ## CLA
 
 In order to contribute to KaTeX, you must first sign the CLA, found at www.khanacademy.org/r/cla
+
+## Pull Requests
+
+ - link back to the original issue(s) whenever possible
+ - commits should be squash before merging
+ - large commits should be broken into multiple logically cohesive commits if possible
 
 ## License
 

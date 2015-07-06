@@ -56,12 +56,12 @@ to match the one used by the Docker approach.
 ## Choosing the list of test cases
 
 Both `screenshotter.js` and `screenshotter.sh` will accept
-a `--cases` option which can be used to specify
+an `--include` option (short `-i`) which can be used to specify
 a list of test cases to be processed, as a comma separated list.
-Conversely, the `--exclude` option can be used to specify a list of cases
-which are not being processed.
+Conversely, the `--exclude` option (short `-x`) can be used
+to specify a list of cases which are not being processed.
 
 Examples:
 
-    node dockers/Screenshotter/screenshotter.js --cases=Sqrt,SqrtRoot
+    node dockers/Screenshotter/screenshotter.js -i Sqrt,SqrtRoot
     dockers/Screenshotter/screenshotter.sh --exclude=GreekLetters

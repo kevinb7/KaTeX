@@ -52,17 +52,19 @@ var opts = require("nomnom")
         "default": 7936,
         help: "Port number of the KaTeX development server"
     })
-    .option("cases", {
+    .option("include", {
+        abbr: "i",
         help: "Comma-separated list of test cases to process"
     })
     .option("exclude", {
+        abbr: "x",
         help: "Comma-separated list of test cases to exclude"
     })
     .parse();
 
 var listOfCases;
-if (opts.cases) {
-    listOfCases = opts.cases.split(",");
+if (opts.include) {
+    listOfCases = opts.include.split(",");
 } else {
     listOfCases = Object.keys(data);
 }

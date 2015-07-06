@@ -1,6 +1,6 @@
 "use strict";
 
-var child_process = require("child_process");
+var childProcess = require("child_process");
 var fs = require("fs");
 var path = require("path");
 var net = require("net");
@@ -10,56 +10,80 @@ var data = require("../../test/screenshotter/ss_data.json");
 
 var dstDir = path.normalize(
     path.join(__dirname, "..", "..", "test", "screenshotter", "images"));
-var todo = Object.keys(data);
-var browser, container;
 
 //////////////////////////////////////////////////////////////////////
 // Process command line arguments
 
-function adjustListOfCases(arg) {
-    if (arg.substr(0, 1) === "-") {
-        var exclude = arg.substr(1).split(",");
-        todo = todo.filter(function(key) {
-            return exclude.indexOf(key) === -1;
-        });
-    } else {
-        todo = arg.split(",");
-    }
+var opts = require("nomnom")
+    .option("browser", {
+        "default": "firefox",
+        help: "Name of the browser to use"
+    })
+    .option("container", {
+        type: "string",
+        help: "Name or ID of a running docker container to contact"
+    })
+    .option("seleniumURL", {
+        full: "selenium-url",
+        help: "Full URL of the Selenium web driver"
+    })
+    .option("seleniumIP", {
+        full: "selenium-ip",
+        help: "IP address of the Selenium web driver"
+    })
+    .option("seleniumPort", {
+        full: "selenium-port",
+        "default": 4444,
+        help: "Port number of the Selenium web driver"
+    })
+    .option("katexURL", {
+        full: "katex-url",
+        help: "Full URL of the KaTeX development server"
+    })
+    .option("katexIP", {
+        full: "katex-ip",
+        "default": "localhost",
+        help: "Full URL of the KaTeX development server"
+    })
+    .option("katexPort", {
+        full: "katex-port",
+        "default": 7936,
+        help: "Port number of the KaTeX development server"
+    })
+    .option("cases", {
+        help: "Comma-separated list of test cases to process"
+    })
+    .option("exclude", {
+        help: "Comma-separated list of test cases to exclude"
+    })
+    .parse();
+
+var listOfCases;
+if (opts.cases) {
+    listOfCases = opts.cases.split(",");
+} else {
+    listOfCases = Object.keys(data);
+}
+if (opts.exclude) {
+    var exclude = opts.exclude.split(",");
+    listOfCases = listOfCases.filter(function(key) {
+        return exclude.indexOf(key) === -1;
+    });
 }
 
-switch (process.argv.length) {
-case 5:
-    adjustListOfCases(process.argv[4]);
-    // fall through
-case 4:
-    browser = process.argv[2];
-    container = process.argv[3];
-    break;
-case 3:
-    adjustListOfCases(process.argv[2]);
-    // fall through
-case 2:
-    browser = "firefox";
-    container = null;
-    break;
-default:
-    console.error("Usage: " + process.argv[0] + " " +
-                  path.basename(process.argv[1]) +
-                  " [BROWSER CONTAINER] [CASES]\n");
-    console.error("BROWSER is firefox, chrome or any other browser " +
-                  "supported by the selenium server.");
-    console.error("CONTAINER is the name or id of a container " +
-                  "running a suitable selenium image.");
-    console.error("CASES is a comma-separated list of test case names.");
-    console.error("\nSee the README file for details.");
-    process.exit(2);
-}
+var seleniumURL = opts.seleniumURL;
+var katexURL = opts.katexURL;
+var seleniumIP = opts.seleniumIP;
+var seleniumPort = opts.seleniumPort;
+var katexIP = opts.katexIP;
 
 //////////////////////////////////////////////////////////////////////
 // Work out connection to selenium docker container
 
 function check(err) {
-    if (!err) return;
+    if (!err) {
+        return;
+    }
     console.error(err);
     console.error(err.stack);
     process.exit(1);
@@ -67,44 +91,52 @@ function check(err) {
 
 function dockerCmd() {
     var args = Array.prototype.slice.call(arguments);
-    return child_process.execFileSync(
+    return childProcess.execFileSync(
         "docker", args, { encoding: "utf-8" }).replace(/\n$/, "");
 }
 
-var myIP, gateway, port;
-if (container === null) {
-    myIP = "localhost";
-    gateway = port = null;
-} else {
+if (!seleniumURL && opts.container) {
     try {
-        gateway = child_process.execFileSync(
+        // When using boot2docker, seleniumIP and katexIP are distinct.
+        seleniumIP = childProcess.execFileSync(
             "boot2docker", ["ip"], { encoding: "utf-8" }).replace(/\n$/, "");
-        var config = child_process.execFileSync(
+        var config = childProcess.execFileSync(
             "boot2docker", ["config"], { encoding: "utf-8" });
         config = (/^HostIP = "(.*)"$/m).exec(config);
         if (!config) {
             console.error("Failed to find HostIP");
             process.exit(2);
         }
-        myIP = config[1];
+        katexIP = config[1];
     } catch(e) {
-        myIP = gateway = dockerCmd(
-            "inspect", "-f", "{{.NetworkSettings.Gateway}}", container);
+        seleniumIP = katexIP = dockerCmd(
+            "inspect", "-f", "{{.NetworkSettings.Gateway}}", opts.container);
     }
-    port = dockerCmd("port", container, "4444");
-    port = port.replace(/^0\.0\.0\.0:/, gateway + ":");
-    console.log("Selenium server at " + port);
+    seleniumPort = dockerCmd("port", opts.container, seleniumPort);
+    seleniumPort = seleniumPort.replace(/^.*:/, "");
+    seleniumURL = "http://" + seleniumIP + ":" + seleniumPort + "/wd/hub";
 }
-var toStrip = "http://localhost:7936/";
-var baseURL = "http://" + myIP + ":7936/";
+if (seleniumURL) {
+    console.log("Selenium driver at " + seleniumURL);
+} else {
+    console.log("Selenium driver in local session");
+}
+
+if (!katexURL) {
+    katexURL = "http://" + katexIP + ":" + opts.katexPort + "/";
+}
+var toStrip = "http://localhost:7936/"; // remove this from testcase URLs
 
 //////////////////////////////////////////////////////////////////////
 // Wait for container to become ready
 
 var attempts = 0;
-process.nextTick(gateway ? tryConnect : buildDriver);
+process.nextTick(seleniumIP ? tryConnect : buildDriver);
 function tryConnect() {
-    var sock = net.connect({ host: gateway, port: +port.replace(/.*:/, "") });
+    var sock = net.connect({
+        host: seleniumIP,
+        port: +seleniumPort
+    });
     sock.on("connect", function() {
         sock.end();
         attempts = 0;
@@ -122,43 +154,56 @@ function tryConnect() {
 
 var driver;
 function buildDriver() {
-    var builder = new selenium.Builder().forBrowser(browser);
-    if (port) builder.usingServer("http://" + port + "/wd/hub")
+    var builder = new selenium.Builder().forBrowser(opts.browser);
+    if (seleniumURL) {
+        builder.usingServer(seleniumURL);
+    }
     driver = builder.build();
-    setSize(width, height);
+    setSize(targetW, targetH);
 }
 
 //////////////////////////////////////////////////////////////////////
 // Set the screen size
 
-var width = 1024, height = 768;
-function setSize(w, h) {
-    return driver.manage().window().setSize(w, h).then(function() {
+var targetW = 1024, targetH = 768;
+function setSize(reqW, reqH) {
+    return driver.manage().window().setSize(reqW, reqH).then(function() {
         return driver.takeScreenshot();
     }).then(function(img) {
-        var buf = new Buffer(img, "base64");
-        var ihdr = buf.readUInt32BE(12);
-        if (ihdr !== 0x49484452) {
-            throw new Error("PNG IHDR not in expected location.");
-        }
-        var sw = buf.readUInt32BE(16);
-        var sh = buf.readUInt32BE(20);
-        if (sw === width && sh === height) {
+        img = imageDimensions(img);
+        var actualW = img.width;
+        var actualH = img.height;
+        if (actualW === targetW && actualH === targetH) {
             process.nextTick(takeScreenshots);
             return;
         }
         if (++attempts > 5) {
             throw new Error("Failed to set window size correctly.");
         }
-        return setSize(width + w - sw, height + h - sh);
+        return setSize(targetW + reqW - actualW, targetH + reqH - actualH);
     }, check);
+}
+
+function imageDimensions(img) {
+    var buf = new Buffer(img, "base64");
+    var ihdr = buf.readUInt32BE(12);
+    if (ihdr !== 0x49484452) {
+        throw new Error("PNG IHDR not in expected location.");
+    }
+    var width = buf.readUInt32BE(16);
+    var height = buf.readUInt32BE(20);
+    return {
+        buf: buf,
+        width: width,
+        height: height
+    };
 }
 
 //////////////////////////////////////////////////////////////////////
 // Take the screenshots
 
 function takeScreenshots() {
-    todo.forEach(takeScreenshot);
+    listOfCases.forEach(takeScreenshot);
 }
 
 function takeScreenshot(key) {
@@ -167,22 +212,26 @@ function takeScreenshot(key) {
         console.error("Test case " + key + " not known!");
         return;
     }
-    url = baseURL + url.substr(toStrip.length);
+    url = katexURL + url.substr(toStrip.length);
     driver.get(url);
     driver.takeScreenshot().then(function haveScreenshot(img) {
-        var buf = new Buffer(img, "base64");
-        var width = buf.readUInt32BE(16);
-        var height = buf.readUInt32BE(20);
-        if (width !== 1024 || height !== 768) {
-            throw new Error("Excpected 1024x768, got " + width + "x" + height);
+        img = imageDimensions(img);
+        if (img.width !== targetW || img.height !== targetH) {
+            throw new Error("Excpected " + targetW + " x " + targetH +
+                            ", got " + img.width + "x" + img.height);
         }
-        if (key === "Lap" && browser === "firefox" && buf[0x32] === 0xf8) {
-            // There is some strange non-determinism with this case,
-            // causing slight vertical shifts. We accept both outcomes.
+        if (key === "Lap" && opts.browser === "firefox" &&
+            img.buf[0x32] === 0xf8) {
+            /* There is some strange non-determinism with this case,
+             * causing slight vertical shifts.  The first difference
+             * is at offset 0x32, where one file has byte 0xf8 and
+             * the other has something else.  By using a different
+             * output file name for one of these cases, we accept both.
+             */
             key += "_alt";
         }
-        var file = path.join(dstDir, key + "-" + browser + ".png");
-        fs.writeFile(file, buf, check);
+        var file = path.join(dstDir, key + "-" + opts.browser + ".png");
+        fs.writeFile(file, img.buf, check);
         console.log(key);
     }, check);
 }

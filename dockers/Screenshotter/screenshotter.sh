@@ -7,6 +7,7 @@
 # suitable containers themselves, calling the screenshotter.js script
 # directly.
 
+status=0
 for browserTag in firefox:2.46.0 chrome:2.46.0; do
     browser=${browserTag%:*}
     image=selenium/standalone-${browserTag}
@@ -14,8 +15,14 @@ for browserTag in firefox:2.46.0 chrome:2.46.0; do
     container=$(docker run -d -P ${image})
     [[ ${container} ]] || continue
     echo "Container ${container:0:12} started, creating screenshots..."
-    res=Failed
-    node "$(dirname "$0")"/screenshotter.js ${browser} ${container} && res=Done
+    if node "$(dirname "$0")"/screenshotter.js \
+            --browser="${browser}" --container="${container}" "$@"; then
+        res=Done
+    else
+        res=Failed
+        status=1
+    fi
     echo "${res} taking screenshots, stopping and removing ${container:0:12}"
     docker stop ${container} >/dev/null && docker rm ${container} >/dev/null
 done
+exit ${status}

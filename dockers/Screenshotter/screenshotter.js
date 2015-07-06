@@ -16,10 +16,12 @@ var dstDir = path.normalize(
 
 var opts = require("nomnom")
     .option("browser", {
+        abbr: "b",
         "default": "firefox",
         help: "Name of the browser to use"
     })
     .option("container", {
+        abbr: "c",
         type: "string",
         help: "Name or ID of a running docker container to contact"
     })

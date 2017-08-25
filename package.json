@@ -1,21 +1,24 @@
 {
-  "name": "katex",
+  "name": "spx-katex",
   "version": "0.6.0-pre",
   "description": "Fast math typesetting for the web.",
   "main": "katex.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/Khan/KaTeX.git"
+    "url": "https://github.com/supersparks/KaTeX.git"
   },
   "files": [
     "katex.js",
     "cli.js",
-    "src/"
+    "src/",
+      "static/",
+      "Makefile",
+      "server.js",
+      "contrib/",
+      "build/"
   ],
   "license": "MIT",
   "devDependencies": {
-    "browserify": "^10.2.4",
-    "clean-css": "~2.2.15",
     "eslint": "^1.10.2",
     "express": "~3.3.3",
     "glob": "^5.0.15",
@@ -23,17 +26,22 @@
     "jasmine-core": "^2.3.4",
     "js-yaml": "^3.3.1",
     "jspngopt": "^0.1.0",
-    "less": "~1.7.5",
     "nomnom": "^1.8.1",
     "pako": "0.2.7",
-    "selenium-webdriver": "^2.46.1",
-    "uglify-js": "~2.4.15"
+    "selenium-webdriver": "^2.46.1"
   },
   "bin": "cli.js",
   "scripts": {
-    "test": "make lint test"
+    "test": "make lint test",
+      "prepublish": "make dist",
+      "install": "make mydist"
   },
   "dependencies": {
-    "match-at": "^0.1.0"
+      "match-at": "^0.1.0",
+      "browserify": "^10.2.4",
+      "uglify-js": "~2.4.15",
+      "less": "~1.7.5",
+      "clean-css": "~2.2.15",
+      "html-escape": "^1.0.2"
   }
 }

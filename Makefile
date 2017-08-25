@@ -1,23 +1,26 @@
-.PHONY: build dist lint setup copy serve clean metrics test zip contrib
-build: setup lint build/katex.min.js build/katex.min.css contrib zip compress
+.PHONY: build dist lint setup copy serve clean metrics test zip contrib mybuild
+
+build: lint build/katex.min.js build/katex.min.css contrib zip compress
 
 dist: build
 	rm -rf dist/
 	cp -R build/katex/ dist/
 
+mydist: build/katex
+	rm -rf dist/
+	cp -R build/katex dist/
+
 # Export these variables for use in contrib Makefiles
 export BUILDDIR = $(realpath build)
-export BROWSERIFY = $(realpath ./node_modules/.bin/browserify)
-export UGLIFYJS = $(realpath ./node_modules/.bin/uglifyjs) \
-	--mangle \
-	--beautify \
-	ascii_only=true,beautify=false
+export PATH := $(PATH):$(realpath node_modules/.bin):$(realpath ../.bin)
+export BROWSERIFY = browserify
+export UGLIFYJS = uglifyjs --mangle --beautify ascii_only=true,beautify=false
 
 setup:
 	npm install
 
 lint: katex.js server.js cli.js $(wildcard src/*.js) $(wildcard test/*.js) $(wildcard contrib/*/*.js) $(wildcard dockers/*/*.js)
-	./node_modules/.bin/eslint --fix $^
+	eslint --fix $^
 
 build/katex.js: katex.js $(wildcard src/*.js)
 	$(BROWSERIFY) $< --standalone katex > $@
@@ -26,13 +29,14 @@ build/katex.min.js: build/katex.js
 	$(UGLIFYJS) < $< > $@
 
 build/katex.less.css: static/katex.less $(wildcard static/*.less)
-	./node_modules/.bin/lessc $< $@
+	lessc $< $@
 
 build/katex.min.css: build/katex.less.css
-	./node_modules/.bin/cleancss -o $@ $<
+	cleancss -o $@ $<
 
 .PHONY: build/fonts
 build/fonts:
+	@echo $$PATH
 	rm -rf $@
 	mkdir $@
 	for font in $(shell grep "font" static/katex.less | grep -o "KaTeX_\w\+" | cut -d" " -f 2 | sort | uniq); do \
@@ -76,7 +80,7 @@ serve:
 	node server.js
 
 test:
-	JASMINE_CONFIG_PATH=test/jasmine.json node_modules/.bin/jasmine
+	JASMINE_CONFIG_PATH=test/jasmine.json jasmine
 
 PERL=perl
 PYTHON=$(shell python2 --version >/dev/null 2>&1 && echo python2 || echo python)

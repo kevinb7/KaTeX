@@ -53,7 +53,10 @@ var rel = "rel";
 var spacing = "spacing";
 var textord = "textord";
 
-// Now comes the symbol table
+// Sparx Symbols
+defineSymbol(math, main, textord, "£", "\\pound");
+defineSymbol(math, main, textord, "€", "\\euro");
+defineSymbol(math, main, textord, "_", "\\gap");
 
 // Relation Symbols
 defineSymbol(math, main, rel, "\u2261", "\\equiv");
